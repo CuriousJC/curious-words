@@ -1,0 +1,110 @@
+/* Deliberately one stylesheet and no framework. The whole page is a heading, a
+   search box, and a list. */
+
+:root {
+  --bg: #fdfdfb;
+  --fg: #1c1b19;
+  --muted: #6b6862;
+  --rule: #e4e1da;
+  --accent: #7a5c3e;
+}
+
+/* Follows the reader's OS setting rather than offering a toggle -- there is no
+   state to persist and nowhere sensible to put a switch. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171614;
+    --fg: #e8e5df;
+    --muted: #9a958c;
+    --rule: #302e2a;
+    --accent: #c9a37a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 6rem;
+}
+
+.masthead h1 {
+  margin: 0 0 2rem;
+  font-size: 1.75rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.search {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.search:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.count,
+.note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 1rem 0 0;
+}
+
+.note.error {
+  color: #b4432f;
+}
+
+.quotes {
+  list-style: none;
+  margin: 2rem 0 0;
+  padding: 0;
+}
+
+.quotes li {
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--rule);
+}
+
+.quotes blockquote {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.attribution {
+  margin: 0.6rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.author {
+  color: var(--accent);
+}
+
+/* Only rendered when an author is present, so the separator cannot lead. */
+.author + .source::before {
+  content: " — ";
+}
+
+.source {
+  font-style: italic;
+}

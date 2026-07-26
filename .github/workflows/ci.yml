@@ -1,0 +1,123 @@
+name: CI
+
+# Triggers on push or pull request against main. With an open PR into main, every
+# commit to the feature branch fires this too.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+  # Allows running this workflow manually from the Actions tab. Note that a manual
+  # run does NOT apply -- the apply step is gated on `push` below.
+  workflow_dispatch:
+
+jobs:
+  # DELIBERATELY ONE JOB.
+  #
+  # The build and the apply must not be separated. Terraform's desired state is
+  # computed from `fileset()` over ../dist on the runner's disk, and dist/ is
+  # gitignored build output. A checkout without a build is therefore a tree where
+  # every deployed object looks deleted, and apply would remove them from the
+  # bucket.
+  #
+  # Keeping both in one job makes that impossible: GitHub re-runs at job
+  # granularity, so there is no way to replay the apply without replaying the
+  # build that feeds it. Splitting this into plan/apply jobs later means the apply
+  # job must rebuild or receive dist/ as an artifact -- not doing so silently
+  # deletes the live site.
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Action versions here (@v7 etc.) are the runtime GitHub executes the action
+      # ITSELF on. That is a separate knob from `node-version` below, which is the
+      # Node our build runs on.
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # `npm ci` rather than `npm install`: installs exactly what the committed
+      # lockfile pins and fails if package.json and the lockfile have drifted. A
+      # deploy pipeline should not resolve new dependency versions on its own.
+      - name: Install deps
+        run: npm ci
+
+      # Builds into dist/. Runs on pull requests too -- a PR that breaks the build
+      # should fail here rather than at deploy time.
+      #
+      # This runs BEFORE any AWS credentials exist on the runner, deliberately. A
+      # broken build should fail on a machine that never held deploy keys.
+      - name: Build
+        run: npm run build
+
+      # Installs Terraform for BOTH paths -- the PR validation steps below need the
+      # binary just as much as the apply does. Not gated on `push` for that reason.
+      # Installing a CLI grants nothing on its own; the credentials step is what
+      # confers access, and that is still push-only.
+      #
+      # `terraform_wrapper: false` keeps the action from wrapping the binary in a
+      # script that mangles stdout, which matters if `terraform output` is ever
+      # parsed here.
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "^1.3.7"
+          terraform_wrapper: false
+
+      # ---- Pull request path: validate Terraform without touching AWS ----------
+      #
+      # `-backend=false` skips the S3 backend entirely, so these steps need no
+      # credentials. Two things fall out of that:
+      #   1. PRs from forks work. Forked PRs do not receive secrets, and this repo
+      #      is public, so any step needing creds would fail for outside
+      #      contributors.
+      #   2. A PR never has deploy credentials on the runner at all.
+      #
+      # The tradeoff is that validate cannot see remote state, so it catches syntax
+      # and provider-schema errors but not drift. That is the right depth for a PR.
+      - name: Terraform Format Check
+        if: github.event_name == 'pull_request'
+        run: terraform fmt -check -recursive
+        working-directory: terraform
+
+      - name: Terraform Validate
+        if: github.event_name == 'pull_request'
+        run: |
+          terraform init -backend=false
+          terraform validate
+        working-directory: terraform
+
+      # ---- Push path: the actual deploy ---------------------------------------
+      #
+      # Everything below is gated on `push`, so it is skipped for pull requests and
+      # for manual workflow_dispatch runs.
+      #
+      # Credentials are long-lived IAM user keys held as repo secrets, matching the
+      # other CuriousJC repos. The lower-exposure alternative is GitHub OIDC: add
+      # `permissions: id-token: write` to this job and swap these two inputs for
+      # `role-to-assume`, which removes standing keys from GitHub entirely and
+      # scopes access to this repo and branch via the role's trust policy.
+      - name: AWS Creds
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        if: github.event_name == 'push'
+        run: terraform init
+        working-directory: terraform
+
+      - name: Terraform Apply
+        if: github.event_name == 'push'
+        run: terraform apply -auto-approve
+        working-directory: terraform

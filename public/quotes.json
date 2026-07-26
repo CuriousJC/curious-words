@@ -1,0 +1,34 @@
+{
+  "quotes": [
+    {
+      "text": "The limits of my language mean the limits of my world.",
+      "author": "Ludwig Wittgenstein",
+      "source": "Tractatus Logico-Philosophicus",
+      "tags": ["language", "philosophy"]
+    },
+    {
+      "text": "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
+      "author": "Jane Austen",
+      "source": "Pride and Prejudice",
+      "tags": ["literature", "opening lines"]
+    },
+    {
+      "text": "Everything should be made as simple as possible, but no simpler.",
+      "author": "Albert Einstein",
+      "source": "Attributed — the wording is almost certainly a later paraphrase",
+      "tags": ["simplicity", "misquotation"]
+    },
+    {
+      "text": "The past is never dead. It's not even past.",
+      "author": "William Faulkner",
+      "source": "Requiem for a Nun",
+      "tags": ["history", "memory"]
+    },
+    {
+      "text": "Programs must be written for people to read, and only incidentally for machines to execute.",
+      "author": "Harold Abelson",
+      "source": "Structure and Interpretation of Computer Programs",
+      "tags": ["software", "craft"]
+    }
+  ]
+}
