@@ -69,11 +69,29 @@ is no concurrent writer; add `dynamodb_table` before that stops being true.
 | Path | What it is |
 |---|---|
 | `public/quotes.json` | The collection. The only file you edit to add a quote. |
+| `public/CuriousJC.jpg` | Favicon, and the README credit image. One copy serving both. |
 | `src/App.jsx` | Fetch, normalise, filter, render. The whole app. |
 | `src/quotes.css` | The only stylesheet. Follows OS dark mode, no toggle. |
 | `terraform/` | Bucket, public-read policy, website config, per-file upload. |
 | `dist/` | Vite build output. Gitignored, produced by CI. |
-| `static/CuriousJC.jpg` | README credit image. Not part of the deployed site. |
+
+## Adding an image
+
+Two mechanisms, and the choice is about whether the URL needs to be stable.
+
+**`public/`** — copied to `dist/` byte for byte, keeping its name. Reference it by
+absolute path (`/CuriousJC.jpg`). Use this when something outside your control
+needs a predictable URL: favicons, `robots.txt`, anything linked from elsewhere.
+The cost is no cache busting — an edited file keeps its name, so browsers may
+serve a stale copy.
+
+**`import` from `src/`** — Vite hashes the filename by content, rewrites the
+reference to match, and inlines anything under 4 kB as a data URI. Use this for
+images the page renders. Cache busting is automatic, because changed content
+means a changed filename.
+
+Do not put images in a bare directory at the repo root expecting them to deploy.
+Only `public/`, and whatever `src/` imports, become part of `dist/`.
 
 ## Common tasks
 
