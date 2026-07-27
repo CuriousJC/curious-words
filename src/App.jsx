@@ -32,10 +32,19 @@ function normalise(raw, index) {
   }
 }
 
+// Tags describing the whole collection rather than the individual quote. Every
+// two-part subject carries `paired`, and 317 quotes carry `polarity` on top of
+// that -- useful to filter by, but repeated on hundreds of entries, so they are
+// rendered muted rather than competing with the subject tags for attention.
+const COLLECTIVE_TAGS = new Set(['paired', 'polarity'])
+
 export default function App() {
   const [quotes, setQuotes] = useState([])
   const [status, setStatus] = useState('loading')
   const [query, setQuery] = useState('')
+  // Tags AND together: selecting `polarity` then `life` narrows to quotes
+  // carrying both, rather than widening to either.
+  const [activeTags, setActiveTags] = useState(() => new Set())
   const searchRef = useRef(null)
 
   // Runs once after the first render. The empty dependency array is what means
@@ -69,16 +78,36 @@ export default function App() {
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    if (!needle) return quotes
-    // Every space-separated term must appear somewhere, so "orwell language"
-    // narrows rather than widening.
-    const terms = needle.split(/\s+/)
-    return quotes.filter((quote) => terms.every((term) => quote.haystack.includes(term)))
-  }, [query, quotes])
+    const terms = needle ? needle.split(/\s+/) : []
+    const tags = [...activeTags]
+
+    return quotes.filter((quote) => {
+      // Exact tag membership, deliberately not a haystack substring match.
+      // Searching the text for "evil & good" also catches quotes that merely
+      // contain those three words; carrying the tag is a different claim.
+      if (!tags.every((tag) => quote.tags.includes(tag))) return false
+      // Every space-separated term must appear somewhere, so "orwell language"
+      // narrows rather than widening.
+      return terms.every((term) => quote.haystack.includes(term))
+    })
+  }, [query, quotes, activeTags])
+
+  // Sets are mutable, and React compares by reference -- mutating the existing
+  // one and calling setState with it would change nothing on screen. Always
+  // build a new Set.
+  function toggleTag(tag) {
+    setActiveTags((current) => {
+      const next = new Set(current)
+      if (next.has(tag)) next.delete(tag)
+      else next.add(tag)
+      return next
+    })
+  }
 
   function handleKeyDown(event) {
     if (event.key === 'Escape') {
       setQuery('')
+      setActiveTags(new Set())
       searchRef.current?.focus()
     }
   }
@@ -111,6 +140,26 @@ export default function App() {
         </p>
       )}
 
+      {activeTags.size > 0 && (
+        <p className="active-filters">
+          <span className="active-label">Filtering by</span>
+          {[...activeTags].map((tag) => (
+            // Repeating the tag name in the label keeps it meaningful to a screen
+            // reader, which announces the button out of its visual context.
+            <button
+              key={tag}
+              type="button"
+              className="tag tag-active"
+              onClick={() => toggleTag(tag)}
+              aria-label={`Remove filter ${tag}`}
+            >
+              {tag}
+              <span aria-hidden="true"> ×</span>
+            </button>
+          ))}
+        </p>
+      )}
+
       {status === 'ready' && (
         <>
           <p className="count">
@@ -120,7 +169,12 @@ export default function App() {
           </p>
 
           {results.length === 0 ? (
-            <p className="note">Nothing matches &ldquo;{query}&rdquo;. Press Esc to clear.</p>
+            <p className="note">
+              {query.trim()
+                ? `Nothing matches “${query}”`
+                : 'No quotes carry all of those tags'}
+              . Press Esc to clear.
+            </p>
           ) : (
             <ul className="quotes">
               {results.map((quote) => (
@@ -130,6 +184,28 @@ export default function App() {
                     <p className="attribution">
                       {quote.author && <span className="author">{quote.author}</span>}
                       {quote.source && <cite className="source">{quote.source}</cite>}
+                    </p>
+                  )}
+                  {quote.tags.length > 0 && (
+                    <p className="tags">
+                      {quote.tags.map((tag) => (
+                        // Buttons rather than spans: these do something, so they
+                        // need to be reachable by keyboard and announced as
+                        // controls rather than decoration.
+                        <button
+                          key={tag}
+                          type="button"
+                          className={
+                            'tag' +
+                            (COLLECTIVE_TAGS.has(tag) ? ' tag-collective' : '') +
+                            (activeTags.has(tag) ? ' tag-active' : '')
+                          }
+                          onClick={() => toggleTag(tag)}
+                          aria-pressed={activeTags.has(tag)}
+                        >
+                          {tag}
+                        </button>
+                      ))}
                     </p>
                   )}
                 </li>

@@ -108,3 +108,66 @@ body {
 .source {
   font-style: italic;
 }
+
+/* Tags ------------------------------------------------------------------- */
+
+.tags,
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0;
+}
+
+.active-filters {
+  margin: 1rem 0 0;
+}
+
+.active-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Buttons, so they are keyboard reachable -- which means undoing the entire
+   default button appearance to get back to something that reads as a label. */
+.tag {
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  padding: 0.15rem 0.55rem;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tag:hover {
+  color: var(--fg);
+  border-color: var(--muted);
+}
+
+.tag:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* `paired` and `polarity` sit on hundreds of quotes. Dashed and dimmer so they
+   read as metadata about the subject rather than another subject. */
+.tag-collective {
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+.tag-active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+.tag-active:hover {
+  color: var(--bg);
+  border-color: var(--accent);
+}

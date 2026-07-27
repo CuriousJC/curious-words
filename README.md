@@ -1,7 +1,9 @@
 # curious-words
 
 A personal quotes collection — somewhere to keep the lines worth keeping, and to
-search them without opening a text file and scrolling.
+search them without opening a text file and scrolling. 726 of them so far,
+carried over from twenty years of Access databases, Word documents and CSV
+exports.
 
 Live at [quotes.sherman.industries](https://quotes.sherman.industries).
 
@@ -45,6 +47,12 @@ deploys.
 Only `text` is required. A quote you remember without knowing who said it is
 still worth keeping, so the app renders whatever fields are present and skips the
 rest. A bare string works too.
+
+Tags appear under each quote and filter when clicked; selecting several narrows
+rather than widens. Alongside the subject tags there are two collective ones,
+shown muted: `paired` for the thirteen two-part subjects, and `polarity` for the
+nine whose halves are genuine opposites — `evil & good`, `fear & courage`,
+`truth & falsity` and so on. Esc clears everything.
 
 The list is never deduplicated. The same line legitimately appears more than once
 with different attributions — misquotation and disputed sourcing are half the

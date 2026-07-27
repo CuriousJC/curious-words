@@ -93,6 +93,60 @@ means a changed filename.
 Do not put images in a bare directory at the repo root expecting them to deploy.
 Only `public/`, and whatever `src/` imports, become part of `dist/`.
 
+## The collection
+
+726 quotes, imported from a twenty-year archive of Access databases, Word
+documents and CSV exports living in `.old-quotes/` (gitignored, 12 MB).
+
+`scripts/import-quotes.js` is the record of that transformation. **It is
+provenance, not a build step.** Nothing in CI runs it, and re-running it would
+discard every quote added by hand since the import. `public/quotes.json` is
+hand-maintained from here.
+
+Two things that script knows which are painful to rediscover:
+
+- **The archive is Windows-1252.** Read as UTF-8, 46 apostrophes and en dashes
+  silently become U+FFFD, and the damage only shows up on the page.
+- **The export is denormalised** — one row per quote per subject, 1,334 rows for
+  726 quotes. Collapsing on text+author+source was safe *for this data* because
+  no text in it carried two different attributions. That is not a general rule;
+  see the dedup note under Conventions.
+
+### Tag vocabulary
+
+Subjects became lowercase readable tags: `Intelligence&Foolishness` →
+`intelligence & foolishness`. On top of the subject tags:
+
+- `paired` — any quote whose subject was one of the 13 two-part subjects (446).
+- `polarity` — the subset whose halves are genuine opposites (317).
+
+The 9 subjects treated as polarities are listed in `POLARITY` at the top of the
+import script. `Beauty&Perfection`, `Duty&Honor`, `Understanding&Virtue` and
+`Emotion&Thought` are deliberately excluded — complementary ideas, not poles.
+
+37 quotes have no tags at all: their only subject was the literal string `NULL`,
+a database export artifact rather than a category.
+
+Tags render under each quote as buttons; clicking one filters. Active tags AND
+together, so `polarity` then `life` narrows to 65.
+
+**Tag filtering is exact membership, deliberately not a `haystack` substring
+match.** Typing `evil & good` into the search box returns 20 quotes; only 19
+carry the tag, the extra being a quote that merely contains those three words.
+Routing tag clicks through the search box would bake that error in. The two
+filters compose — a tag filter and a text query narrow together.
+
+## Known gaps
+
+- `.old-quotes/quotestoadd.txt` and `.old-quotes/QuotesFromPartner.txt` hold
+  roughly 18 quotes never imported, in three inconsistent attribution formats.
+  They need parsing or hand entry. Deliberately deferred.
+- The legacy `.mdb`, `.sdf` and `.doc` files in `.old-quotes/` were never checked
+  for quotes missing from the main export. Unknown whether 726 is everything.
+- 8 quotes exceed 1,000 characters and 33 exceed 500, against a median of 91. The
+  longest is 4,885 characters and renders as a wall of text. No truncation or
+  expand-on-click exists yet.
+
 ## Common tasks
 
 **Adding a quote:** edit `public/quotes.json` and push. Only `text` is required;
@@ -137,6 +191,25 @@ app's HTML in the body.
 ## Environment
 
 - Windows. The Bash tool is Git Bash (POSIX `sh`), not cmd or PowerShell.
-- `gh` CLI is **not** installed here. Use the GitHub web UI or the API directly to
-  read Actions runs.
 - Terraform 1.5.7 locally; CI installs `^1.3.7`.
+
+`gh` CLI is installed and authenticated as `CuriousJC` (scopes: `repo`,
+`workflow`), so Actions runs are readable directly:
+
+```
+gh run list -R CuriousJC/curious-words
+gh run view <id> --log-failed
+```
+
+**If `gh` appears to be missing, it is a stale environment, not a missing
+install.** `C:\Program Files\GitHub CLI\` is in the persisted *machine* PATH, but
+an editor launched before that entry existed passes its older environment to
+every shell it spawns. `command -v gh` then returns nothing and the obvious
+conclusion is wrong. Check `[Environment]::GetEnvironmentVariable("Path","Machine")`
+before believing it, and call the full path meanwhile:
+
+```
+& "C:\Program Files\GitHub CLI\gh.exe" run list -R CuriousJC/curious-words
+```
+
+Restarting the editor fixes it properly.
