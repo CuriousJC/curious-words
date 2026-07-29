@@ -55,6 +55,26 @@ there is no certificate on the origin to validate. Terraform knows nothing about
 the Cloudflare layer. A confusing deploy ("CI was green, the page is stale") is
 more likely to be Cloudflare caching than Terraform.
 
+Measured 2026-07-26, and it splits by file type rather than uniformly:
+
+| Path | Behaviour |
+|---|---|
+| `/` and `/quotes.json` | `cf-cache-status: DYNAMIC` — not edge-cached |
+| `/assets/*.js`, `*.css` | Cached, `max-age=14400` (4 h) |
+| `/CuriousJC.jpg` and other `public/` files | Cached, `max-age=14400` |
+
+Two consequences. **Adding a quote is visible immediately** — `quotes.json` is not
+cached, so the edit-and-push loop works. And **hashed assets caching is harmless**
+because a rebuild changes the filename, so an old URL going stale is impossible.
+
+The exception is `public/` files, which keep their names. Replacing the favicon
+means up to 4 hours of the old one at the edge, plus browser cache. That is the
+cost of the stable URL, not a bug.
+
+Nothing in this repo sets those TTLs — they are Cloudflare defaults, driven by
+file extension. A "Cache Everything" page rule would start caching
+`quotes.json` too, and quote edits would silently stop appearing.
+
 ## State
 
 Backend is the shared `curiousjc-tf-state` bucket, key `curiousjc/curious-words`.
@@ -138,14 +158,52 @@ filters compose — a tag filter and a text query narrow together.
 
 ## Known gaps
 
-- `.old-quotes/quotestoadd.txt` and `.old-quotes/QuotesFromPartner.txt` hold
-  roughly 18 quotes never imported, in three inconsistent attribution formats.
-  They need parsing or hand entry. Deliberately deferred.
-- The legacy `.mdb`, `.sdf` and `.doc` files in `.old-quotes/` were never checked
-  for quotes missing from the main export. Unknown whether 726 is everything.
-- 8 quotes exceed 1,000 characters and 33 exceed 500, against a median of 91. The
-  longest is 4,885 characters and renders as a wall of text. No truncation or
-  expand-on-click exists yet.
+Open as of 2026-07-26, roughly in the order they are worth picking up.
+
+### The collection
+
+- **Visual review of the tag UI has not happened.** Tags shipped verified by logic
+  and build only — nobody has looked at the rendered page. Specifically unknown:
+  whether the dashed-and-dimmed treatment of `paired`/`polarity` reads as
+  subordinate or as broken, and how a quote with four tags wraps on a phone.
+- **No tag index.** All 28 subjects exist but are only discoverable by spotting
+  one on a quote and clicking it. A list with counts, at the top or behind a
+  toggle, would make the collection browsable rather than only searchable.
+- **Long quotes have no treatment.** 8 exceed 1,000 characters and 33 exceed 500,
+  against a median of 91. The longest is 4,885 (the Gemmell passage under
+  `fear & courage`) and renders as a wall of text. Wants clamping with
+  expand-on-click.
+- **~18 quotes were never imported** — `.old-quotes/quotestoadd.txt` and
+  `.old-quotes/QuotesFromPartner.txt`, in three inconsistent attribution formats.
+  They need parsing or hand entry.
+- **The legacy `.mdb`, `.sdf` and `.doc` files were never checked** for quotes
+  missing from the main export. Unknown whether 726 is the whole collection.
+
+### Site
+
+- **The favicon is a 1024×1024 JPEG, 141 kB** — larger than the JS bundle, to
+  render at 16–32 px. A 64×64 export would be ~2–4 kB. Note that replacing it
+  means up to 4 hours of the old one at the Cloudflare edge, since `public/`
+  files keep stable names.
+- **No `.gitattributes`**, so git warns about LF→CRLF on every add. Cosmetic.
+
+### Infrastructure — outside this repo
+
+- **The CI identity's scope has never been verified.** The first run succeeding
+  proves the permissions are *sufficient*, not *minimal*. If the policy grants
+  `curiousjc-tf-state/*` rather than just `curiousjc/curious-words`, this repo's
+  CI can write another stack's state and destroy it.
+- **OIDC instead of long-lived keys.** Would remove standing AWS credentials from
+  GitHub entirely and scope access by repo and branch. Roughly a two-line change
+  here plus a one-time identity provider in the account.
+- **`curiousjc-shared-infra` runs `terraform apply` on `pull_request`** — it has
+  no `if: github.event_name == 'push'` guard. Different repo, but the same
+  pattern this one deliberately guards against.
+- **The state bucket name is published** in `terraform/providers.tf`. Unavoidable
+  with committed backend config; a partial backend plus `-backend-config` from CI
+  secrets would hide it, at the cost of more moving parts.
+- **No DynamoDB state locking.** Fine while applies are CI-only and single-writer;
+  add `dynamodb_table` before that stops being true.
 
 ## Common tasks
 
