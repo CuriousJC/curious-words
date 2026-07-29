@@ -32,6 +32,19 @@ function normalise(raw, index) {
   }
 }
 
+// Fisher-Yates, on a copy. Returns a new array so the caller's list is left
+// alone -- shuffling in place would mutate the array `map` just handed us, which
+// happens to be safe here but stops being safe the moment anything else holds a
+// reference to it.
+function shuffle(list) {
+  const shuffled = [...list]
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 // Tags describing the whole collection rather than the individual quote. Every
 // two-part subject carries `paired`, and 317 quotes carry `polarity` on top of
 // that -- useful to filter by, but repeated on hundreds of entries, so they are
@@ -62,7 +75,14 @@ export default function App() {
         // Tolerate both a bare array and an object with a `quotes` key, so the
         // file can grow metadata later without breaking this.
         const list = Array.isArray(data) ? data : (data.quotes ?? [])
-        setQuotes(list.map(normalise))
+        // Shuffled once, here, rather than in the render path. Order is fixed for
+        // the life of the page: filtering and searching reorder nothing, so a
+        // quote does not move out from under you as you type. Reloading is what
+        // reshuffles.
+        //
+        // Normalise first, then shuffle -- `id` is position in the source file
+        // and has to be assigned before anything moves.
+        setQuotes(shuffle(list.map(normalise)))
         setStatus('ready')
       })
       .catch(() => {
