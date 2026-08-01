@@ -61,7 +61,7 @@ Measured 2026-07-26, and it splits by file type rather than uniformly:
 |---|---|
 | `/` and `/quotes.json` | `cf-cache-status: DYNAMIC` — not edge-cached |
 | `/assets/*.js`, `*.css` | Cached, `max-age=14400` (4 h) |
-| `/CuriousJC.jpg` and other `public/` files | Cached, `max-age=14400` |
+| `/favicon.jpg` and other `public/` files | Cached, `max-age=14400` |
 
 Two consequences. **Adding a quote is visible immediately** — `quotes.json` is not
 cached, so the edit-and-push loop works. And **hashed assets caching is harmless**
@@ -89,7 +89,7 @@ is no concurrent writer; add `dynamodb_table` before that stops being true.
 | Path | What it is |
 |---|---|
 | `public/quotes.json` | The collection. The only file you edit to add a quote. |
-| `public/CuriousJC.jpg` | Favicon, and the README credit image. One copy serving both. |
+| `public/favicon.jpg` | Favicon, and the README credit image. One copy serving both. |
 | `src/App.jsx` | Fetch, normalise, filter, render. The whole app. |
 | `src/quotes.css` | The only stylesheet. Follows OS dark mode, no toggle. |
 | `terraform/` | Bucket, public-read policy, website config, per-file upload. |
@@ -100,7 +100,7 @@ is no concurrent writer; add `dynamodb_table` before that stops being true.
 Two mechanisms, and the choice is about whether the URL needs to be stable.
 
 **`public/`** — copied to `dist/` byte for byte, keeping its name. Reference it by
-absolute path (`/CuriousJC.jpg`). Use this when something outside your control
+absolute path (`/favicon.jpg`). Use this when something outside your control
 needs a predictable URL: favicons, `robots.txt`, anything linked from elsewhere.
 The cost is no cache busting — an edited file keeps its name, so browsers may
 serve a stale copy.
@@ -112,6 +112,14 @@ means a changed filename.
 
 Do not put images in a bare directory at the repo root expecting them to deploy.
 Only `public/`, and whatever `src/` imports, become part of `dist/`.
+
+**Never name a `public/` file after a handle.** These filenames are stable and
+appear verbatim in the HTML source of every page, so they are read by anyone who
+views source. The favicon shipped as `/CuriousJC.jpg` until 2026-08-01, which put
+a distinctive, cross-platform handle on a domain that does not otherwise name its
+author — not a technical link, but a search term to pivot on. Renamed to
+`favicon.jpg`. The README keeps the credit deliberately: the direction being
+closed is website → GitHub, not the reverse.
 
 ## The collection
 
