@@ -87,4 +87,4 @@ distribute stay just as open as what they started from.
 ## Credit
 
 curious-words by CuriousJC
-![CuriousJC Image](/public/CuriousJC.jpg)
+![CuriousJC Image](/public/favicon.jpg)
